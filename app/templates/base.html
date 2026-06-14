@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Flatmate Expense Manager{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <span>📊</span> Shared Expenses Manager
+        </div>
+        <nav class="nav-links">
+            {% if current_user %}
+                <span class="user-tag">👤 Active: <strong>{{ current_user.username }}</strong></span>
+                <a href="/logout" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Logout</a>
+            {% else %}
+                <a href="/login">Login</a>
+                <a href="/register" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Sign Up</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

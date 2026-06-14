@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Import Report - Flatmate Expenses{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <a href="/groups/{{ group_id }}" class="btn btn-secondary" style="margin-bottom: 1rem;">⬅ Back to Dashboard</a>
+    <h1 style="font-size: 2.2rem; background: linear-gradient(to right, #3b82f6, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;">
+        Import Report: {{ batch.filename }}
+    </h1>
+    <p style="color: var(--text-secondary);">Uploaded at: {{ batch.imported_at }} | Batch ID: #{{ batch.id }}</p>
+</div>
+
+<!-- REPORT STATISTICS -->
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="card" style="padding: 1.25rem; margin-bottom: 0; text-align: center;">
+        <span style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase;">Staged Rows</span>
+        <h2 style="font-size: 2.2rem; font-weight: 800; color: var(--color-warning);">{{ pending | length }}</h2>
+    </div>
+    <div class="card" style="padding: 1.25rem; margin-bottom: 0; text-align: center;">
+        <span style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase;">Approved Rows</span>
+        <h2 style="font-size: 2.2rem; font-weight: 800; color: var(--color-success);">{{ completed | length }}</h2>
+    </div>
+    <div class="card" style="padding: 1.25rem; margin-bottom: 0; text-align: center;">
+        <span style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase;">Batch Status</span>
+        <h2 style="font-size: 2.2rem; font-weight: 800;">
+            {% if batch.status == 'PENDING' %}
+                <span style="color: var(--color-warning);">PENDING</span>
+            {% else %}
+                <span style="color: var(--color-success);">COMPLETE</span>
+            {% endif %}
+        </h2>
+    </div>
+    <div class="card" style="padding: 1.25rem; margin-bottom: 0; text-align: center;">
+        <span style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase;">Review Required</span>
+        <h2 style="font-size: 2.2rem; font-weight: 800; color: {% if pending | length > 0 %}var(--color-danger){% else %}var(--color-success){% endif %};">
+            {% if pending | length > 0 %}YES{% else %}NO{% endif %}
+        </h2>
+    </div>
+</div>
+
+<!-- PENDING ITEMS FOR REVIEW -->
+<div class="card">
+    <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--color-warning);">
+        ⚠️ Staged Rows Awaiting Flatmate Approval (Meera's Approval)
+    </h3>
+    
+    {% if not pending %}
+        <p style="color: var(--text-secondary); text-align: center; padding: 2rem 0;">🎉 No pending reviews! All transactions successfully imported and committed to the ledger.</p>
+    {% else %}
+        {% for staged in pending %}
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-premium); padding: 1.5rem; margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-glass); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+                    <div>
+                        <strong style="color: var(--color-primary); font-size: 1.1rem;">Row #{{ staged.row_number }}</strong>
+                        <span style="color: var(--text-secondary); font-size: 0.9rem; margin-left: 0.5rem;">Raw: "{{ staged.description or 'Empty description' }}"</span>
+                    </div>
+                    <div>
+                        <span class="badge badge-warning">Awaiting Action</span>
+                    </div>
+                </div>
+
+                <!-- ANOMALIES LIST -->
+                <div style="margin-bottom: 1.5rem;">
+                    <h5 style="color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.5rem;">Detected Anomalies</h5>
+                    {% for anomaly in staged.anomalies %}
+                        <div style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid var(--color-warning); padding: 0.5rem 1rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.85rem;">
+                            <strong>[{{ anomaly.anomaly_type }}]</strong> - Severity: 
+                            <span class="{% if anomaly.severity == 'ERROR' %}amt-negative{% else %}amt-neutral{% endif %}" style="font-weight:700;">{{ anomaly.severity }}</span>.
+                            <div>{{ anomaly.description }}</div>
+                            <div style="color: var(--color-success); font-weight: 500; margin-top: 0.25rem;">Proposed Auto-Correction: {{ anomaly.proposed_correction }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- FORM CONTROLS -->
+                <form action="/staged-expenses/{{ staged.id }}/decide" method="post">
+                    <!-- DETAILED MODIFICATION INPUTS -->
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px;">
+                        <div class="form-group">
+                            <label>Description</label>
+                            <input type="text" name="description" value="{{ staged.description }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Amount / Currency</label>
+                            <input type="text" name="raw_amount" value="{{ staged.raw_amount }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" name="raw_date" value="{{ staged.raw_date }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Paid By</label>
+                            <select name="paid_by_id">
+                                {% for u in users %}
+                                    <option value="{{ u.id }}" {% if staged.raw_paid_by.strip().title() == u.username %}selected{% endif %}>{{ u.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Split Type</label>
+                            <select name="split_type">
+                                <option value="EQUAL" {% if staged.raw_split_type == 'EQUAL' %}selected{% endif %}>EQUAL</option>
+                                <option value="EXACT" {% if staged.raw_split_type == 'EXACT' %}selected{% endif %}>EXACT</option>
+                                <option value="PERCENT" {% if staged.raw_split_type == 'PERCENT' %}selected{% endif %}>PERCENT</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Decision Note / Approval Reason</label>
+                            <input type="text" name="notes" placeholder="e.g. Approved after verifying with Aisha.">
+                        </div>
+                    </div>
+
+                    <!-- SUBMIT BUTTONS -->
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                        <button type="submit" name="decision" value="SKIPPED" class="btn btn-danger">❌ Skip / Reject Row</button>
+                        <button type="submit" name="decision" value="APPROVED" class="btn btn-success">✅ Approve & Promote</button>
+                    </div>
+                </form>
+            </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<!-- COMPLETED RESOLUTIONS -->
+{% if completed %}
+    <div class="card">
+        <h3 style="margin-bottom: 1.5rem; color: var(--color-success);">
+            ✅ Resolved / Approved Rows in this Batch
+        </h3>
+        <table class="anomaly-table">
+            <thead>
+                <tr>
+                    <th>Row</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Payer</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for staged in completed %}
+                    <tr>
+                        <td>{{ staged.row_number }}</td>
+                        <td>{{ staged.description }}</td>
+                        <td>{{ staged.raw_amount }}</td>
+                        <td>{{ staged.raw_paid_by }}</td>
+                        <td>
+                            <span class="badge {% if staged.status == 'APPROVED' %}badge-info{% else %}badge-warning{% endif %}">
+                                {{ staged.status }}
+                            </span>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endif %}
+{% endblock %}

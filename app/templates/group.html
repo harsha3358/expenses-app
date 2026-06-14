@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}{{ group.name }} - Expenses Dashboard{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <h1 style="font-size: 2.5rem; background: linear-gradient(to right, #3b82f6, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;">
+        {{ group.name }}
+    </h1>
+    <p style="color: var(--text-secondary);">Manage group expenses, clean messy imports, and view simplified debts.</p>
+</div>
+
+<div class="dashboard-grid">
+    <!-- LEFT COLUMN: LEDGERS & CONTROLS -->
+    <div>
+        <!-- UPLOAD CARD -->
+        <div class="card">
+            <h3 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                📥 Import Messy Expense Spreadsheet
+            </h3>
+            <form action="/groups/{{ group.id }}/import" method="post" enctype="multipart/form-data" style="display: flex; gap: 1rem; align-items: center;">
+                <input type="file" name="file" accept=".csv" required style="flex-grow: 1;">
+                <button type="submit" class="btn btn-primary">Analyze CSV</button>
+            </form>
+            <p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.5rem;">
+                Supported anomalies: duplicates, casing variants, currency conversions, empty fields, splits, and tenure windows.
+            </p>
+        </div>
+
+        <!-- TRANSACTION LEDGERS -->
+        <div class="card">
+            <h3 style="margin-bottom: 1.5rem;">🧾 Group Ledger</h3>
+            
+            <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-glass); padding-bottom: 1rem;">
+                <h4 style="color: var(--color-primary);">Production Expenses</h4>
+            </div>
+
+            <div class="ledger-list">
+                {% if not expenses %}
+                    <p style="color: var(--text-secondary); text-align: center; padding: 2rem 0;">No expenses recorded yet. Use manual entry or upload a CSV.</p>
+                {% else %}
+                    {% for exp in expenses %}
+                        <div class="ledger-item">
+                            <div class="ledger-meta">
+                                <span class="ledger-title">{{ exp.description }}</span>
+                                <span class="ledger-sub">
+                                    Paid by <strong>{{ exp.paid_by.username }}</strong> on <strong>{{ exp.date }}</strong>
+                                    {% if exp.import_batch_id %}
+                                        <span class="badge badge-info" style="margin-left: 0.5rem;">Import Batch #{{ exp.import_batch_id }}</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div style="text-align: right;">
+                                <div class="ledger-title amt-neutral" style="font-weight: 700;">
+                                    ₹{{ "%.2f" | format(exp.converted_amount_paise / 100.0) }}
+                                </div>
+                                {% if exp.original_currency != 'INR' %}
+                                    <div class="ledger-sub">
+                                        {{ exp.original_currency }} {{ "%.2f" | format(exp.original_amount_paise / 100.0) }} @ {{ exp.exchange_rate }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            
+            {% if payments %}
+                <h3 style="margin-top: 2.5rem; margin-bottom: 1.5rem;">💸 Settled Payments Ledger</h3>
+                <div class="ledger-list">
+                    {% for pm in payments %}
+                        <div class="ledger-item" style="border-left: 4px solid var(--color-success);">
+                            <div class="ledger-meta">
+                                <span class="ledger-title">Settlement Payment</span>
+                                <span class="ledger-sub">
+                                    From <strong>{{ pm.from_user.username }}</strong> to <strong>{{ pm.to_user.username }}</strong> on <strong>{{ pm.date }}</strong>
+                                </span>
+                            </div>
+                            <div class="ledger-title amt-positive" style="font-weight: 700;">
+                                ₹{{ "%.2f" | format(pm.amount_paise / 100.0) }}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- MANUAL ENTRIES CARD -->
+        <div class="card">
+            <h3 style="margin-bottom: 1.5rem;">➕ Record Transaction Manually</h3>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <!-- EXPENSE FORM -->
+                <div>
+                    <h4 style="margin-bottom: 1rem; color: var(--color-primary);">Add Group Expense</h4>
+                    <form action="/groups/{{ group.id }}/expenses" method="post">
+                        <div class="form-group">
+                            <label for="exp_desc">Description</label>
+                            <input type="text" id="exp_desc" name="description" placeholder="e.g. Electricity bill" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="exp_amt">Amount</label>
+                            <input type="text" id="exp_amt" name="amount_str" placeholder="e.g. 1500" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="exp_curr">Currency</label>
+                            <select id="exp_curr" name="currency">
+                                <option value="INR">INR (₹)</option>
+                                <option value="USD">USD ($)</option>
+                                <option value="EUR">EUR (€)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="exp_date">Date</label>
+                            <input type="date" id="exp_date" name="date_str" required value="{{ date_str if date_str else '2026-06-15' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="exp_payer">Paid By</label>
+                            <select id="exp_payer" name="paid_by_id">
+                                {% for m in members %}
+                                    <option value="{{ m.id }}">{{ m.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <input type="hidden" name="split_type" value="EQUAL">
+                        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Add Expense</button>
+                    </form>
+                </div>
+
+                <!-- SETTLEMENT FORM -->
+                <div>
+                    <h4 style="margin-bottom: 1rem; color: var(--color-success);">Record Settlement (Payment)</h4>
+                    <form action="/groups/{{ group.id }}/payments" method="post">
+                        <div class="form-group">
+                            <label for="pay_from">From User (Debtor)</label>
+                            <select id="pay_from" name="from_user_id">
+                                {% for m in members %}
+                                    <option value="{{ m.id }}">{{ m.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="pay_to">To User (Creditor)</label>
+                            <select id="pay_to" name="to_user_id">
+                                {% for m in members %}
+                                    <option value="{{ m.id }}">{{ m.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="pay_amt">Amount</label>
+                            <input type="text" id="pay_amt" name="amount_str" placeholder="e.g. 500" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="pay_date">Date</label>
+                            <input type="date" id="pay_date" name="date_str" required value="2026-06-15">
+                        </div>
+                        <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 1rem;">Record Settlement</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT COLUMN: BALANCES, SIMPLIFIED DEBTS, & TENURES -->
+    <div>
+        <!-- TENURES CARD -->
+        <div class="card" style="padding: 1.5rem;">
+            <h3 style="margin-bottom: 1rem;">🏠 Varying Tenures</h3>
+            <div style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                {% for m in memberships %}
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-glass); padding-bottom: 0.4rem;">
+                        <strong>{{ m.user.username }}</strong>
+                        <span style="color: var(--text-secondary);">
+                            {{ m.joined_date }} to 
+                            {% if m.left_date %}
+                                <span style="color: #fca5a5;">{{ m.left_date }} (Left)</span>
+                            {% else %}
+                                <span style="color: #6ee7b7;">Present</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- SIMPLIFIED DEBTS -->
+        <div class="card" style="padding: 1.5rem;">
+            <h3 style="margin-bottom: 1rem; color: #6ee7b7;">💡 Aisha's Settlement Guide</h3>
+            {% if not simplified_debts %}
+                <p style="color: var(--text-secondary); font-size: 0.9rem; text-align: center; padding: 1rem 0;">All balances are fully settled! No payments required.</p>
+            {% else %}
+                {% for inst in simplified_debts %}
+                    <div class="settle-instruction">
+                        <div style="font-size: 0.9rem;">
+                            <strong>{{ inst.from_username }}</strong> owes <strong>{{ inst.to_username }}</strong>
+                        </div>
+                        <div style="font-weight: 700; color: var(--color-success);">
+                            ₹{{ "%.2f" | format(inst.amount_paise / 100.0) }}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- BALANCES CARD -->
+        <div class="card" style="padding: 1.5rem;">
+            <h3 style="margin-bottom: 1rem;">💰 Current Net Balances</h3>
+            <div style="display: flex; flex-direction: column;">
+                {% for snap in snapshots %}
+                    <div class="balance-item">
+                        <div class="balance-user">
+                            <div class="avatar">{{ snap.user.username[0] }}</div>
+                            <div>
+                                <div style="font-weight: 600;">{{ snap.user.username }}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                    Paid: ₹{{ "%.2f" | format(snap.paid_amt_paise / 100.0) }} | Owed: ₹{{ "%.2f" | format(snap.owed_amt_paise / 100.0) }}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem;">
+                            <span class="balance-amt {% if snap.net_balance_paise > 0 %}amt-positive{% elif snap.net_balance_paise < 0 %}amt-negative{% else %}amt-neutral{% endif %}">
+                                {% if snap.net_balance_paise > 0 %}+{% endif %}₹{{ "%.2f" | format(snap.net_balance_paise / 100.0) }}
+                            </span>
+                            <a href="/groups/{{ group.id }}/balances/trace/{{ snap.user_id }}" class="btn btn-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; border-radius: 4px;">Explain</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ROHAN'S TRACEABILITY PANEL (MODAL OVERLAY) -->
+{% if trace_user %}
+    <div class="modal-overlay">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-glass); padding-bottom: 1rem;">
+                <h2 style="font-size: 1.5rem; color: var(--color-primary);">Traceability Ledger for {{ trace_user.username }}</h2>
+                <a href="/groups/{{ group.id }}" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">✕ Close</a>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-button); padding: 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span style="font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase;">Current Snapshot Balance</span>
+                    <h3 style="font-size: 2rem; font-weight: 800;" class="{% if trace_snapshot.net_balance_paise > 0 %}amt-positive{% elif trace_snapshot.net_balance_paise < 0 %}amt-negative{% else %}amt-neutral{% endif %}">
+                        {% if trace_snapshot.net_balance_paise > 0 %}+{% endif %}₹{{ "%.2f" | format(trace_snapshot.net_balance_paise / 100.0) }}
+                    </h3>
+                </div>
+                <div style="text-align: right; font-size: 0.85rem; color: var(--text-secondary);">
+                    <div>Paid Total: ₹{{ "%.2f" | format(trace_snapshot.paid_amt_paise / 100.0) }}</div>
+                    <div>Owed Total: ₹{{ "%.2f" | format(trace_snapshot.owed_amt_paise / 100.0) }}</div>
+                    <div>Sent Total: ₹{{ "%.2f" | format(trace_snapshot.settlements_sent_paise / 100.0) }}</div>
+                    <div>Recv Total: ₹{{ "%.2f" | format(trace_snapshot.settlements_received_paise / 100.0) }}</div>
+                </div>
+            </div>
+
+            <h4 style="margin-bottom: 1rem; color: var(--text-secondary); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em;">Chrono Transaction History</h4>
+            
+            <div style="display: flex; flex-direction: column;">
+                {% if not trace_events %}
+                    <p style="color: var(--text-secondary); text-align: center; padding: 1rem 0;">No trace history found.</p>
+                {% else %}
+                    {% for ev in trace_events %}
+                        <div class="trace-line">
+                            <span class="trace-date">{{ ev.date }}</span>
+                            <div style="font-weight: 600; font-size: 0.95rem; margin-top: 0.25rem;">
+                                {{ ev.description }}
+                            </div>
+                            
+                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                                <span>
+                                    Role: <strong>{{ ev.role }}</strong>
+                                    {% if ev.original_currency != 'INR' %}
+                                        | Original: {{ ev.original_currency }} {{ "%.2f" | format(ev.original_amount) }} @ rate {{ ev.exchange_rate }}
+                                    {% endif %}
+                                </span>
+                                <span class="{% if ev.effect_paise > 0 %}amt-positive{% else %}amt-negative{% endif %}" style="font-weight: 700;">
+                                    {% if ev.effect_paise > 0 %}+{% endif %}₹{{ "%.2f" | format(ev.effect_paise / 100.0) }}
+                                </span>
+                            </div>
+                            
+                            <div style="text-align: right; font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem; border-top: 1px dashed rgba(255,255,255,0.05); padding-top: 0.2rem;">
+                                Running Balance: <strong>₹{{ "%.2f" | format(ev.running_balance_paise / 100.0) }}</strong>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

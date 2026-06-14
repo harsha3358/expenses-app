@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Flatmate Expenses{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="card auth-card">
+        <div class="auth-header">
+            <h2>Create Account</h2>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">Join Flat 204 to track expenses together</p>
+        </div>
+
+        {% if error %}
+            <div class="error-banner">
+                ⚠️ {{ error }}
+            </div>
+        {% endif %}
+
+        <form action="/register" method="post">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="e.g. Sam" required autocomplete="username">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="new-password">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Sign Up</button>
+        </form>
+
+        <p style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+            Already have an account? <a href="/login">Sign in here</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
