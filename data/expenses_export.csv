@@ -1,0 +1,21 @@
+Date,Description,Amount,Currency,Paid By,Split Type,Split Details,Category,Notes
+2026-01-05,Electricity Bill,₹4500,INR,Aisha,EQUAL,,Utilities,January electricity
+2026-01-10,Grocery run,1200,,rohan,EQUAL,,Food,No currency lowercase name
+05/01/2026,Electricity Bill,₹4500,INR,Aisha,EQUAL,,Utilities,Duplicate row anomaly
+2026-02-15,Dinner out,$120.50,USD,Priya,PERCENT,Aisha:30;Rohan:30;Priya:40,Food,Foreign Currency and Symbol in Amount
+2026-02-28,Internet,1500,INR,Sam,EQUAL,,Utilities,Sam not joined yet -> Payer Outside Tenure
+2026-03-05,Cleaning supplies,Rs. 950,INR,Priya,EQUAL,,Cleaning,Priya with Sam included
+2026-03-10,Pizza Night,1800,INR,Rohan,PERCENT,Aisha:50%;Rohan:50%,Food,Percent Split
+2026-03-20,Cab Ride,450,INR,Aisha M.,EQUAL,,Travel,Casing mapping Aisha M. -> Aisha
+2026-04-05,Kitchen repair,15000,INR,Meera,EQUAL,,Maintenance,Meera joined
+2026-04-10,Weekend getaway,24000,INR,Priya,PERCENT,Aisha:25;Rohan:25;Priya:25;Sam:25;Meera:10,Travel,Percent sum error (110% instead of 100%)
+2026-04-15,Shared snacks,-500,INR,Rohan,EQUAL,,Food,Negative Amount -> Refund Candidate
+2026-04-20,Concert tickets,8000,INR,Raj,EQUAL,,Entertainment,Payer Not Registered Raj
+2026-05-05,Monthly rent,50000,INR,Aisha,EXACT,Aisha:10000;Rohan:10000;Priya:10000;Sam:10000;Meera:10000,Rent,Exact split sum is correct
+2026-05-10,Groceries,2500,INR,Priya,EXACT,Aisha:500;Rohan:500;Priya:500;Sam:500;Meera:400,Food,Exact split sum mismatch (2400 instead of 2500)
+2026-05-25,Rohan paid Aisha back (settlement),3500,INR,Rohan,EQUAL,,Settlement,Settlement in expense sheet
+2026-06-05,Cleaning fee,1500,INR,Meera,EQUAL,,Cleaning,Meera left -> Payer Outside Tenure
+2026-01-15,Winter heaters,9000,INR,Aisha,EQUAL,Aisha;Rohan;Priya;Sam,Utilities,Sam outside tenure split -> Split outside tenure
+2026-07-20,Future trip deposits,5000,INR,Aisha,EQUAL,,Deposit,Future Date
+2026-05-15,Luxury sofa,120000,INR,Priya,EQUAL,,Furniture,Outlier Amount
+2026-05-20,Water bill,0,INR,Rohan,EQUAL,,Utilities,Zero Amount
