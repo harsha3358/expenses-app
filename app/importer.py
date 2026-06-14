@@ -301,18 +301,20 @@ def detect_anomalies_for_row(
     if parsed_date and split_type == "EQUAL" and not raw_split_details:
         # Dynamic EQUAL split calculation based on tenure
         if active_user_ids:
-            share_paise = converted_amount_paise // len(active_user_ids)
-            remainder = converted_amount_paise % len(active_user_ids)
-            
-            # Create equal shares, distribute remainder to payer or first person
-            for idx, uid in enumerate(active_user_ids):
+            # Convert to list for deterministic ordering and payer-preferred remainder allocation
+            active_uids_list = list(active_user_ids)
+            share_paise = converted_amount_paise // len(active_uids_list)
+            remainder = converted_amount_paise % len(active_uids_list)
+
+            # Determine which index receives the remainder — prefer the payer
+            payer_idx = 0  # fallback to first member
+            if payer_user and payer_user.id in active_user_ids:
+                payer_idx = active_uids_list.index(payer_user.id)
+
+            for idx, uid in enumerate(active_uids_list):
                 amt = share_paise
-                if idx == 0 and payer_user and payer_user.id in active_user_ids:
-                    # Allocate remainder to payer to balance out
+                if idx == payer_idx:
                     amt += remainder
-                elif idx == 0:
-                    amt += remainder
-                    
                 staged_shares.append({"user_id": uid, "share_amount_paise": amt})
         else:
             anomalies.append({
@@ -532,7 +534,16 @@ def process_decision(
     
     # Gather group context
     batch = db.query(ImportBatch).filter(ImportBatch.id == staged_exp.batch_id).first()
-    group_id = db.query(GroupMembership).filter(GroupMembership.user_id == user_id).first().group_id
+    if not batch:
+        return "BATCH_NOT_FOUND", None
+
+    # Resolve group_id from batch (authoritative) or fall back to user's first membership
+    group_id = batch.group_id
+    if not group_id:
+        group_memb = db.query(GroupMembership).filter(GroupMembership.user_id == user_id).first()
+        if not group_memb:
+            return "NO_GROUP", None
+        group_id = group_memb.group_id
 
     # Check if this row is evaluated as a Settlement (Payment)
     is_settlement_payment = False

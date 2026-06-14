@@ -39,6 +39,10 @@ class GroupMembership(Base):
     joined_date = Column(Date, nullable=False)
     left_date = Column(Date, nullable=True)
 
+    __table_args__ = (
+        UniqueConstraint("group_id", "user_id", name="uq_group_membership"),
+    )
+
     group = relationship("Group", back_populates="memberships")
     user = relationship("User", back_populates="memberships")
 
@@ -46,11 +50,13 @@ class ImportBatch(Base):
     __tablename__ = "import_batches"
 
     id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=True, index=True)
     imported_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     filename = Column(String(255), nullable=False)
     status = Column(String(50), nullable=False) # 'PENDING', 'COMPLETED'
 
     staged_expenses = relationship("StagedExpense", back_populates="batch", cascade="all, delete-orphan")
+    group = relationship("Group")
 
 class Expense(Base):
     __tablename__ = "expenses"

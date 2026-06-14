@@ -1,93 +1,142 @@
-# Shared Expenses Application
+# Shared Expenses App
 
-A production-ready shared expenses application designed to clean and ingest messy, inconsistent expense data from spreadsheets, resolve flatmate balance disputes, and handle complex varying tenure calendars with financial integrity.
+## The Problem
+
+Five people share a flat. Every month someone pays the electricity bill, someone else buys groceries, and a third person covers the internet. By the end of the month nobody agrees on who owes what.
+
+It gets worse when you try to import three months of transactions from a spreadsheet. Half the rows have typos in names. Some amounts are in dollars. One row is clearly a duplicate. A few dates don't even make sense.
+
+Now multiply that by the fact that one flatmate moved in mid-month and another left early. The old split percentages are now wrong for those weeks.
+
+No one wants to do this math by hand. And nobody trusts that the math was done correctly.
+
+## The Solution
+
+This app solves exactly that.
+
+You upload your messy spreadsheet. The app reads every row and flags anything suspicious — duplicate entries, unrecognised names, wrong currencies, future dates, impossible amounts. Instead of auto-correcting silently, it shows you each problem and asks what to do. You approve, reject, or fix each one before anything touches the ledger.
+
+Once the data is clean, the app calculates who owes who — accounting for when each person was actually living there. It then simplifies the debts. If Aisha owes Rohan ₹500 and Rohan owes Priya ₹500, instead of two payments you get one: Aisha pays Priya directly.
+
+Every balance comes with a full transaction-by-transaction breakdown so anyone can trace exactly how a number was calculated.
+
+## Who It Is For
+
+Flatmates who share expenses and want to settle fairly without arguments about the maths.
 
 ---
 
 ## Features
-- **Secure Credentials System**: Cookie sessions signed with HMAC-SHA256 and secure flags (`HttpOnly`, `SameSite=Lax`).
-- **Stateful CSV Ingestion Staging Area**: Uploaded spreadsheets pass validation checks; anomalies are staged for manual review, edit, approval, or skip before ledger promote (Veto power compliance).
-- **Dynamic Tenure Calendar Validation**: Group memberships validate member joined/left dates against transaction dates. Omit inactive flatmates dynamically from splits.
-- **Explainable Balance Trace Engine**: Chronological traces mapping transaction dates, currency exchange conversions, and roles (Payer vs Shareholder).
-- **Greedy Debt Simplification**: Solves circular debts to generate optimized, minimal settlement instruction links.
-- **Precision Calculation Engine**: Processes all currency operations in minor units (integer paise) to eliminate float rounding drift.
+
+- Upload a CSV and review every suspicious row before it enters the ledger
+- Detects 16 anomaly types: typos, wrong currencies, duplicate rows, missing names, bad dates, outlier amounts
+- Splits expenses only among flatmates who were actually present on that date
+- Converts foreign currencies to INR at seeded exchange rates, preserving original amount and rate for auditability
+- Simplifies debts to the minimum number of payments
+- Shows a full line-by-line trace of how each person's balance was calculated
+- Secure login with HMAC-signed, HttpOnly session cookies
+- Full audit log of every ledger mutation and import decision
 
 ---
 
-## Tech Stack & Architecture
-- **Framework**: FastAPI (Python 3.10+)
-- **ORM & Database**: SQLAlchemy (PostgreSQL engine integration, compatible with Neon Serverless)
-- **Frontend Views**: Jinja2 HTML Templates + Vanilla CSS
+## Tech Stack
+
+- **Backend**: Python, FastAPI
+- **Database**: PostgreSQL (hosted on Neon)
+- **Frontend**: Jinja2 HTML templates, Vanilla CSS
+- **Auth**: HMAC-signed session cookies
 
 ---
 
-## Setup Instructions
+## Running Locally
 
-### 1. Prerequisites
-- Python 3.10 or higher.
-- A running PostgreSQL database (local or a cloud-hosted Neon database URL).
+### Prerequisites
 
-### 2. Local Installation
-Clone the repository, navigate to the folder, and set up a virtual environment:
+- Python 3.10 or higher
+- A PostgreSQL database (local or Neon cloud)
+
+### Install
+
 ```bash
-# Clone
 git clone https://github.com/harsha3358/expenses-app.git
 cd expenses-app
 
-# Create Virtual Environment
 python -m venv venv
 venv\Scripts\activate
 
-# Install Dependencies
 pip install -r requirements.txt
 ```
 
-### 3. PostgreSQL Configuration
-Configure your PostgreSQL server connection string in your `.env` file or environment:
-```bash
-# Set environment variable (Linux/macOS)
-export DATABASE_URL="postgresql://postgres:password@localhost:5432/shared_expenses"
-export SECRET_KEY="your-production-secret-key-signature"
-export ENV="production"
+### Configure
 
-# In PowerShell (Windows)
+```powershell
+# PowerShell
 $env:DATABASE_URL="postgresql://postgres:password@localhost:5432/shared_expenses"
-$env:SECRET_KEY="your-production-secret-key-signature"
+$env:SECRET_KEY="your-secret-key"
 $env:ENV="production"
 ```
 
-### 4. Database Seeding & Startup
-Run uvicorn to initialize and seed the tables:
+### Start
+
 ```bash
-# Runs uvicorn, database will be auto-seeded on startup with users:
-# Aisha, Rohan, Priya, Sam, Meera (Password for all: 'flatmate123')
 python -m uvicorn app.main:app --reload
 ```
+
+The app seeds five test users on startup: Aisha, Rohan, Priya, Sam, Meera.
+Password for all: `flatmate123`
 
 ---
 
 ## Running Tests
-Unit tests use an in-memory SQLite database configuration to run isolated from production database connections:
-```bash
-# Run pytest with PYTHONPATH set
+
+**Windows (PowerShell)**:
+```powershell
 $env:PYTHONPATH="C:\expenses_app"
 pytest
 ```
 
----
+**Linux / macOS**:
+```bash
+PYTHONPATH=. pytest
+```
 
-## Deployment on Render (with Neon DB)
-1. Register a PostgreSQL database instance on **Neon** (`https://neon.tech`). Copy the Connection string.
-2. Sign in to **Render** (`https://render.com`) and choose **Blueprints** to upload via `render.yaml`, or create a **Web Service**:
-   - Environment: `Python`
-   - Build Command: `pip install -r requirements.txt`
-   - Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-   - Add Environment Variables:
-     - `DATABASE_URL`: Your Neon PostgreSQL Connection string.
-     - `SECRET_KEY`: A cryptographically secure random secret key.
-     - `ENV`: `production`
+Tests use an in-memory SQLite database. No PostgreSQL connection needed.
 
 ---
 
-## Screenshots Placeholder
-*(Screenshots of Group Dashboard, Anomaly Review Report, and Rohan's Explained Trace Modal will be added here).*
+## Deploying on Render
+
+1. Create a PostgreSQL database on [Neon](https://neon.tech). Copy the connection string.
+2. Go to [Render](https://render.com) and create a new Web Service:
+   - Build command: `pip install -r requirements.txt`
+   - Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+3. Add environment variables:
+   - `DATABASE_URL` — your Neon connection string
+   - `SECRET_KEY` — a long random string
+   - `ENV` — set to `production`
+
+Alternatively, connect the repo and use the included `render.yaml` for one-click deployment.
+
+---
+
+## Screenshots
+
+*(Group dashboard, anomaly review screen, and balance trace view — to be added.)*
+
+---
+
+## Known Limitations
+
+- **Manual expense form**: Supports EQUAL splits only. EXACT and PERCENTAGE splits are supported through the CSV import workflow.
+- **Exchange rates**: Static, seeded at startup. Historical rate lookup by date is not implemented.
+- **Session expiry**: Signed cookies do not expire server-side. Re-login is only required after explicit logout or secret key rotation.
+- **Single group per deployment**: The application is designed for one flat (one group). Multi-group routing exists but is not fully exposed in the UI.
+
+---
+
+## Security
+
+- Passwords are hashed with bcrypt (native, no passlib wrapper).
+- Sessions use HMAC-SHA256 signed cookies with `HttpOnly=True`, `SameSite=Lax`, and `Secure=True` in production.
+- All database queries use SQLAlchemy ORM parameterization — no raw SQL string interpolation.
+- Set `SECRET_KEY` to a cryptographically random string before deployment. Never use the default.

@@ -41,7 +41,26 @@ def recalculate_snapshots(group_id: int, db: Session):
             Payment.to_user_id == uid
         ).scalar() or 0
 
-        # Net balance formula: (Paid + Sent) - (Owed + Received)
+        # Net balance formula derivation:
+        #
+        #   paid_amt  = cash user fronted for group expenses.
+        #               The group owes the user this money back. (+)
+        #
+        #   owed_amt  = user's share of all group expenses.
+        #               The user owes this for their own consumption. (-)
+        #
+        #   sent_amt  = cash settlements user SENT to others.
+        #               Sending a settlement pays off the user's own debt,
+        #               which reduces what they owe — improving their net. (+)
+        #
+        #   recv_amt  = cash settlements user RECEIVED from others.
+        #               Receiving a settlement collects what is owed to the user,
+        #               which reduces the remaining claim — lowering their net. (-)
+        #
+        #   net = (paid_amt + sent_amt) - (owed_amt + recv_amt)
+        #       = paid_amt - owed_amt + sent_amt - recv_amt
+        #
+        #   Invariant: sum of all members' net_balance_paise for a group == 0
         net_balance = (paid_amt + sent_amt) - (owed_amt + recv_amt)
 
         # Update or create snapshot
