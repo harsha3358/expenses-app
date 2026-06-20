@@ -2,6 +2,7 @@ import bcrypt
 import hmac
 import hashlib
 import os
+import time
 from fastapi import Request, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -10,24 +11,34 @@ from app.models import User
 # HMAC key used to sign session cookies, fetched from environment in production
 SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-flatmate-key").encode("utf-8")
 
+if os.getenv("ENV") == "production" and SECRET_KEY == b"super-secret-flatmate-key":
+    raise RuntimeError("Cannot use the default SECRET_KEY in production.")
+
+SESSION_EXPIRY_SECONDS = 7 * 24 * 3600 # 7 days
+
 def sign_user_id(user_id: int) -> str:
     """
     Cryptographically signs a user ID for secure session cookies.
     """
     user_str = str(user_id)
-    signature = hmac.new(SECRET_KEY, user_str.encode("utf-8"), hashlib.sha256).hexdigest()
-    return f"{user_str}.{signature}"
+    expiry = str(int(time.time()) + SESSION_EXPIRY_SECONDS)
+    payload = f"{user_str}.{expiry}"
+    signature = hmac.new(SECRET_KEY, payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{payload}.{signature}"
 
 def verify_user_id(cookie_value: str) -> int | None:
     """
     Verifies the signature of a session cookie and returns the user ID if authentic.
     """
-    if not cookie_value or "." not in cookie_value:
+    if not cookie_value or cookie_value.count(".") != 2:
         return None
     try:
-        user_str, signature = cookie_value.split(".", 1)
-        expected = hmac.new(SECRET_KEY, user_str.encode("utf-8"), hashlib.sha256).hexdigest()
+        user_str, expiry_str, signature = cookie_value.split(".", 2)
+        payload = f"{user_str}.{expiry_str}"
+        expected = hmac.new(SECRET_KEY, payload.encode("utf-8"), hashlib.sha256).hexdigest()
         if hmac.compare_digest(expected, signature):
+            if int(time.time()) > int(expiry_str):
+                return None
             return int(user_str)
     except Exception:
         pass

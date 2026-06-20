@@ -78,8 +78,18 @@ def test_balance_snapshots_and_trace(balance_db):
     # Rohan owes 1000 -> Net: -1000
     # Priya owes 1000 -> Net: -1000
     # Sam -> Net: 0 (not active)
-    aisha_snap = db.query(User).filter(User.username == "Aisha").first().expense_shares
-    assert len(aisha_snap) == 1
+    from app.models import BalanceSnapshot
+    aisha_snap = db.query(BalanceSnapshot).filter(BalanceSnapshot.user_id == aisha.id).first()
+    assert aisha_snap.net_balance_paise == 200000
+    
+    rohan_snap = db.query(BalanceSnapshot).filter(BalanceSnapshot.user_id == rohan.id).first()
+    assert rohan_snap.net_balance_paise == -100000
+    
+    priya_snap = db.query(BalanceSnapshot).filter(BalanceSnapshot.user_id == priya.id).first()
+    assert priya_snap.net_balance_paise == -100000
+    
+    sam_snap = db.query(BalanceSnapshot).filter(BalanceSnapshot.user_id == sam.id).first()
+    assert sam_snap.net_balance_paise == 0
 
     # Verify chronological trace
     trace = explain_balance_trace(rohan.id, group.id, db)

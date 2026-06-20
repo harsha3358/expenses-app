@@ -75,6 +75,7 @@
 
                 <!-- FORM CONTROLS -->
                 <form action="/staged-expenses/{{ staged.id }}/decide" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
                     <!-- DETAILED MODIFICATION INPUTS -->
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px;">
                         <div class="form-group">

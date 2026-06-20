@@ -2,22 +2,22 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 :root {
-    --bg-dark: #0f172a;
-    --bg-glass: rgba(30, 41, 59, 0.7);
-    --bg-card: #1e293b;
-    --border-glass: rgba(255, 255, 255, 0.08);
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --color-primary: #3b82f6; /* Blue */
-    --color-primary-hover: #2563eb;
+    --bg-dark: #f0fdf4; /* Light pastel background */
+    --bg-glass: rgba(255, 255, 255, 0.85);
+    --bg-card: #ffffff;
+    --border-glass: rgba(0, 0, 0, 0.05);
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --color-primary: #6366f1; /* Vibrant Indigo */
+    --color-primary-hover: #4f46e5;
     --color-success: #10b981; /* Emerald */
     --color-warning: #f59e0b; /* Amber */
-    --color-danger: #ef4444; /* Rose */
+    --color-danger: #f43f5e; /* Vibrant Rose */
     --font-heading: 'Outfit', sans-serif;
     --font-body: 'Inter', sans-serif;
-    --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-    --radius-premium: 16px;
-    --radius-button: 10px;
+    --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+    --radius-premium: 24px;
+    --radius-button: 9999px; /* Very rounded accessible buttons */
     --transition-fast: 0.2s ease;
 }
 
@@ -33,8 +33,8 @@ body {
     color: var(--text-primary);
     font-family: var(--font-body);
     line-height: 1.5;
-    background-image: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
-                      radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.08) 0%, transparent 40%);
+    background-image: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                      radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.15) 0%, transparent 40%);
     background-attachment: fixed;
     min-height: 100vh;
 }
@@ -138,20 +138,20 @@ label {
 }
 
 input, select, textarea {
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid var(--border-glass);
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
     border-radius: var(--radius-button);
-    padding: 0.8rem 1rem;
+    padding: 1rem 1.25rem;
     color: var(--text-primary);
     font-family: var(--font-body);
-    font-size: 1rem;
+    font-size: 1.1rem;
     transition: var(--transition-fast);
 }
 
 input:focus, select:focus, textarea:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
 }
 
 /* Button System */
@@ -159,10 +159,10 @@ input:focus, select:focus, textarea:focus {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.8rem 1.5rem;
+    padding: 1rem 2rem;
     font-family: var(--font-body);
-    font-size: 0.95rem;
-    font-weight: 600;
+    font-size: 1.1rem;
+    font-weight: 700;
     border-radius: var(--radius-button);
     border: none;
     cursor: pointer;
@@ -181,13 +181,13 @@ input:focus, select:focus, textarea:focus {
 }
 
 .btn-secondary {
-    background: rgba(255, 255, 255, 0.08);
+    background: #f1f5f9;
     color: var(--text-primary);
-    border: 1px solid var(--border-glass);
+    border: 2px solid #e2e8f0;
 }
 
 .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: #e2e8f0;
 }
 
 .btn-danger {
@@ -323,8 +323,8 @@ input:focus, select:focus, textarea:focus {
 }
 
 .ledger-item {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--border-glass);
+    background: var(--bg-card);
+    border: 1px solid #e2e8f0;
     border-radius: var(--radius-button);
     padding: 1.25rem;
     display: flex;
@@ -363,18 +363,18 @@ input:focus, select:focus, textarea:focus {
 }
 
 .badge-info {
-    background: rgba(59, 130, 246, 0.15);
-    color: #93c5fd;
+    background: #e0e7ff;
+    color: #4338ca;
 }
 
 .badge-warning {
-    background: rgba(245, 158, 11, 0.15);
-    color: #fde047;
+    background: #fef3c7;
+    color: #b45309;
 }
 
 .badge-danger {
-    background: rgba(239, 68, 68, 0.15);
-    color: #fca5a5;
+    background: #ffe4e6;
+    color: #be123c;
 }
 
 /* Anomaly Table Layout */
@@ -426,7 +426,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .trace-line {
-    border-left: 2px solid var(--border-glass);
+    border-left: 2px solid #cbd5e1;
     margin-left: 10px;
     padding-left: 20px;
     position: relative;

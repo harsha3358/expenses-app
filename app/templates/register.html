@@ -17,6 +17,7 @@
         {% endif %}
 
         <form action="/register" method="post">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" placeholder="e.g. Sam" required autocomplete="username">

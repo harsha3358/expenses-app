@@ -17,6 +17,9 @@ from app.auth import get_current_user, hash_password, verify_password, sign_user
 from app.importer import parse_csv_to_staging, process_decision, parse_date, parse_amount
 from app.balance import recalculate_snapshots, explain_balance_trace, simplify_debts
 
+import secrets
+import hmac
+
 # Create the application
 app = FastAPI(title="Shared Expenses Manager")
 
@@ -99,10 +102,40 @@ def on_startup():
 
 # Context processor for templates
 @app.middleware("http")
-async def add_custom_context(request: Request, call_next):
-    # Add request context globally
+async def csrf_middleware(request: Request, call_next):
+    csrf_token = request.cookies.get("csrf_token")
+    if not csrf_token:
+        csrf_token = secrets.token_urlsafe(32)
+    request.state.csrf_token = csrf_token
     response = await call_next(request)
+    if request.cookies.get("csrf_token") != csrf_token:
+        response.set_cookie(
+            "csrf_token",
+            csrf_token,
+            httponly=True,
+            samesite="lax",
+            secure=os.getenv("ENV") == "production"
+        )
     return response
+
+async def verify_csrf(request: Request):
+    if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
+        form = await request.form()
+        cookie_token = request.cookies.get("csrf_token")
+        form_token = form.get("csrf_token")
+        if not cookie_token or not form_token or not hmac.compare_digest(cookie_token, form_token):
+            raise HTTPException(status_code=403, detail="Invalid CSRF token")
+
+def require_group_member(group_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    memb = db.query(GroupMembership).filter(
+        GroupMembership.group_id == group_id,
+        GroupMembership.user_id == current_user.id
+    ).first()
+    if not memb:
+        raise HTTPException(status_code=403, detail="Not a member of this group")
+    return current_user
 
 # Routes
 @app.get("/", response_class=HTMLResponse)
@@ -123,7 +156,7 @@ def get_home(request: Request, current_user: User = Depends(get_current_user)):
 def get_login(request: Request):
     return templates.TemplateResponse(request, "login.html", {"error": None})
 
-@app.post("/login")
+@app.post("/login", dependencies=[Depends(verify_csrf)])
 def post_login(
     response: Response,
     request: Request,
@@ -153,7 +186,7 @@ def post_login(
 def get_register(request: Request):
     return templates.TemplateResponse(request, "register.html", {"error": None})
 
-@app.post("/register")
+@app.post("/register", dependencies=[Depends(verify_csrf)])
 def post_register(
     request: Request,
     username: str = Form(...),
@@ -199,12 +232,9 @@ def get_logout():
 def get_group(
     group_id: int,
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_group_member),
     db: Session = Depends(get_db)
 ):
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=303)
-        
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
@@ -232,7 +262,7 @@ def get_group(
         "memberships": memberships
     })
 
-@app.post("/groups/{group_id}/expenses")
+@app.post("/groups/{group_id}/expenses", dependencies=[Depends(verify_csrf)])
 def post_expense(
     group_id: int,
     description: str = Form(...),
@@ -242,10 +272,8 @@ def post_expense(
     paid_by_id: int = Form(...),
     split_type: str = Form(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_group_member)
 ):
-    if not current_user:
-        raise HTTPException(status_code=401)
         
     amount_paise, _ = parse_amount(amount_str)
     parsed_date = parse_date(date_str) or datetime.date.today()
@@ -307,7 +335,7 @@ def post_expense(
     recalculate_snapshots(group_id, db)
     return RedirectResponse(url=f"/groups/{group_id}", status_code=303)
 
-@app.post("/groups/{group_id}/payments")
+@app.post("/groups/{group_id}/payments", dependencies=[Depends(verify_csrf)])
 def post_payment(
     group_id: int,
     from_user_id: int = Form(...),
@@ -315,10 +343,8 @@ def post_payment(
     amount_str: str = Form(...),
     date_str: str = Form(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_group_member)
 ):
-    if not current_user:
-        raise HTTPException(status_code=401)
         
     amount_paise, _ = parse_amount(amount_str)
     parsed_date = parse_date(date_str) or datetime.date.today()
@@ -346,15 +372,13 @@ def post_payment(
     recalculate_snapshots(group_id, db)
     return RedirectResponse(url=f"/groups/{group_id}", status_code=303)
 
-@app.post("/groups/{group_id}/import")
+@app.post("/groups/{group_id}/import", dependencies=[Depends(verify_csrf)])
 def post_import_csv(
     group_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_group_member)
 ):
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=303)
         
     # Write file locally inside /scratch directory
     temp_dir = "scratch/temp"
@@ -365,13 +389,17 @@ def post_import_csv(
         f.write(file.file.read())
 
     # Create batch record
-    batch = ImportBatch(filename=file.filename, status="PENDING")
+    batch = ImportBatch(filename=file.filename, status="PENDING", group_id=group_id)
     db.add(batch)
     db.commit()
     db.refresh(batch)
 
     # Ingest rows to staged tables
     parse_csv_to_staging(temp_path, batch.id, group_id, db)
+    
+    # Cleanup temp file
+    if os.path.exists(temp_path):
+        os.remove(temp_path)
 
     db.add(AuditLog(
         user_id=current_user.id,
@@ -421,7 +449,7 @@ def get_import_report(
         "group_id": group_id
     })
 
-@app.post("/staged-expenses/{staged_id}/decide")
+@app.post("/staged-expenses/{staged_id}/decide", dependencies=[Depends(verify_csrf)])
 def post_decide(
     staged_id: int,
     decision: str = Form(...), # 'APPROVED' / 'SKIPPED' / 'MODIFIED'
@@ -481,11 +509,9 @@ def get_balance_trace(
     group_id: int,
     user_id: int,
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_group_member),
     db: Session = Depends(get_db)
 ):
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=303)
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:

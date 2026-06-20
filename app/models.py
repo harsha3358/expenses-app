@@ -51,7 +51,7 @@ class ImportBatch(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=True, index=True)
-    imported_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    imported_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), nullable=False)
     filename = Column(String(255), nullable=False)
     status = Column(String(50), nullable=False) # 'PENDING', 'COMPLETED'
 
@@ -157,7 +157,7 @@ class ImportDecision(Base):
     anomaly_id = Column(Integer, ForeignKey("staged_anomalies.id", ondelete="CASCADE"), nullable=False)
     decision = Column(String(50), nullable=False) # 'APPROVED_AS_IS', 'SKIPPED', 'MODIFIED'
     decision_by = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
-    decision_time = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    decision_time = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), nullable=False)
     notes = Column(Text, nullable=True)
 
     anomaly = relationship("StagedAnomaly", back_populates="decisions")
@@ -169,7 +169,7 @@ class BalanceSnapshot(Base):
     id = Column(Integer, primary_key=True, index=True)
     group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    calculated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+    calculated_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc), nullable=False)
     net_balance_paise = Column(Integer, nullable=False)
     paid_amt_paise = Column(Integer, nullable=False)
     owed_amt_paise = Column(Integer, nullable=False)
@@ -194,7 +194,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    timestamp = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     action = Column(String(100), nullable=False) # 'UPLOAD', 'APPROVE', 'REJECT', 'MODIFY', 'SETTLE'
     target_type = Column(String(50), nullable=False) # 'staged_expense', 'expense', 'payment'

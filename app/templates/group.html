@@ -19,6 +19,7 @@
                 📥 Import Messy Expense Spreadsheet
             </h3>
             <form action="/groups/{{ group.id }}/import" method="post" enctype="multipart/form-data" style="display: flex; gap: 1rem; align-items: center;">
+                <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
                 <input type="file" name="file" accept=".csv" required style="flex-grow: 1;">
                 <button type="submit" class="btn btn-primary">Analyze CSV</button>
             </form>
@@ -122,7 +123,15 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <input type="hidden" name="split_type" value="EQUAL">
+                        <div class="form-group">
+                            <label for="split_type">Split Type</label>
+                            <select id="split_type" name="split_type">
+                                <option value="EQUAL">EQUAL</option>
+                                <option value="EXACT">EXACT (Not fully supported in manual entry yet)</option>
+                                <option value="PERCENTAGE">PERCENTAGE (Not fully supported in manual entry yet)</option>
+                            </select>
+                        </div>
+                        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
                         <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Add Expense</button>
                     </form>
                 </div>
@@ -131,6 +140,7 @@
                 <div>
                     <h4 style="margin-bottom: 1rem; color: var(--color-success);">Record Settlement (Payment)</h4>
                     <form action="/groups/{{ group.id }}/payments" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
                         <div class="form-group">
                             <label for="pay_from">From User (Debtor)</label>
                             <select id="pay_from" name="from_user_id">
