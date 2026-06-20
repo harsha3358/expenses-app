@@ -132,4 +132,4 @@ def test_process_decision_modified(importer_db):
     assert exp.description == "New Desc"
     
     staged_after = db.query(StagedExpense).filter(StagedExpense.id == staged.id).first()
-    assert staged_after.description == "New Desc"
+    assert staged_after.status == "MODIFIED"
